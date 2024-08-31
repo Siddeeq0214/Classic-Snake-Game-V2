@@ -143,22 +143,24 @@ class PowerFruit:
         self.active = False
 
 
-class MAIN:
+class Main:
     def __init__(self):
         self.snake = Snake()
         self.fruit = Fruit()
         self.power_fruit = PowerFruit()
         self.score = 0
         self.high_score = 0
+        self.paused = False
 
         # Load the background image and scale it to fit the screen
-        self.background_image = pygame.image.load('assets/background.png')
+        self.background_image = pygame.image.load('assets/background2.png')
         self.background_image = pygame.transform.scale(self.background_image, (cell_number * cell_size, cell_number * cell_size))
 
     def update(self):
-        self.snake.move_snake()
-        self.check_collision()
-        self.check_fail()
+        if not self.paused:
+            self.snake.move_snake()
+            self.check_collision()
+            self.check_fail()
 
     def draw_elements(self):
         screen.blit(self.background_image, (0, 0))
@@ -166,6 +168,8 @@ class MAIN:
         self.power_fruit.draw_fruit()
         self.snake.draw_snake()
         self.draw_score()
+        if self.paused:
+            self.draw_pause_screen() #Draw pause screen
 
     def check_collision(self):
         if self.fruit.pos == self.snake.body[0]:
@@ -181,10 +185,14 @@ class MAIN:
             if self.score % 100 == 0:
                 self.power_fruit.activate()
 
+        # Check for collision with the power fruit
         if self.power_fruit.active and self.power_fruit.pos == self.snake.body[0]:
             self.power_fruit.deactivate()
-            self.snake.add_block()
-            self.score += 20  # Increment score by 20 for power fruit
+            self.score += 20  # Increase score by 20 for collecting power fruit
+
+            # Update the high score
+            if self.score > self.high_score:
+                self.high_score = self.score
 
         # Avoid fruit spawning inside the snake's body
         for block in self.snake.body[1:]:
@@ -225,6 +233,29 @@ class MAIN:
         screen.blit(score_surface, score_rect)
         screen.blit(high_score_surface, high_score_rect)
 
+    def draw_pause_screen(self):
+        # Draw a semi-transparent background box
+        box_width, box_height = 300, 150
+        box_x = (screen.get_width() - box_width) // 2
+        box_y = (screen.get_height() - box_height) // 2
+        box_rect = pygame.Rect(box_x, box_y, box_width, box_height)
+
+        pygame.draw.rect(screen, (0, 0, 0, 180), box_rect)  # Semi-transparent black
+        pygame.draw.rect(screen, (255, 255, 255), box_rect, 2)  # White border
+
+        # Draw the text
+        pause_text = "Paused"
+        resume_text = "Press 'R' to Resume"
+        
+        pause_surface = game_font.render(pause_text, True, (255, 255, 255))  # White text
+        resume_surface = game_font.render(resume_text, True, (255, 255, 255))  # White text
+
+        pause_rect = pause_surface.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2 - 20))
+        resume_rect = resume_surface.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2 + 20))
+
+        screen.blit(pause_surface, pause_rect)
+        screen.blit(resume_surface, resume_rect)
+
 
 pygame.mixer.pre_init(44100, -16, 2, 512)
 pygame.init()
@@ -236,12 +267,10 @@ apple = pygame.image.load('assets/apple.png').convert_alpha()
 power_apple = pygame.image.load('assets/power_apple.png').convert_alpha()
 game_font = pygame.font.Font('Font/PoetsenOne-Regular.ttf', 25)
 
-smoothness_factor = 10
-
 SCREEN_UPDATE = pygame.USEREVENT
 pygame.time.set_timer(SCREEN_UPDATE, 150)
 
-main_game = MAIN()
+main_game = Main()
 
 while True:
     for event in pygame.event.get():
@@ -251,6 +280,13 @@ while True:
         if event.type == SCREEN_UPDATE:
             main_game.update()
         if event.type == pygame.KEYDOWN:
+
+            if event.key == pygame.K_ESCAPE:
+                main_game.paused = not main_game.paused  # Toggle pause state
+
+            if event.key == pygame.K_r and main_game.paused:
+                main_game.paused = False  # Resume the game
+
             if event.key == pygame.K_UP:
                 if main_game.snake.direction.y != 1:
                     main_game.snake.direction = Vector2(0, -1)
@@ -263,7 +299,7 @@ while True:
             if event.key == pygame.K_RIGHT:
                 if main_game.snake.direction.x != -1:
                     main_game.snake.direction = Vector2(1, 0)
-        if event.type == pygame.KEYDOWN:
+        
             if event.key == pygame.K_w:
                 if main_game.snake.direction.y != 1:
                     main_game.snake.direction = Vector2(0, -1)
