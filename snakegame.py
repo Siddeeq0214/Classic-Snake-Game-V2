@@ -1,5 +1,6 @@
 import pygame, sys, random
 from pygame.math import Vector2
+import time
 
 class Snake:
     def __init__(self):
@@ -154,6 +155,9 @@ class Main:
         self.score = 0
         self.high_score = 0
         self.paused = False
+        self.start_time = time.time()  # Track when the game starts
+        self.elapsed_time = 0  # Initialize elapsed time
+
 
         # Load the background image and scale it to fit the screen
         self.background_image = pygame.image.load('assets/background4.png')
@@ -164,6 +168,12 @@ class Main:
             self.snake.move_snake()
             self.check_collision()
             self.check_fail()
+            self.update_timer()
+
+    def update_timer(self):
+        # Update the elapsed time if the game is not paused
+        self.elapsed_time = time.time() - self.start_time
+
 
     def draw_elements(self):
         screen.blit(self.background_image, (0, 50))
@@ -171,8 +181,23 @@ class Main:
         self.power_fruit.draw_fruit()
         self.snake.draw_snake()
         self.draw_score()
+        self.draw_timer()
         if self.paused:
             self.draw_pause_screen() #Draw pause screen
+
+    def draw_timer(self):
+        # Convert elapsed time to minutes and seconds
+        minutes = int(self.elapsed_time // 60)
+        seconds = int(self.elapsed_time % 60)
+        timer_text = f"{minutes:02}:{seconds:02}"
+
+        # Render the timer text
+        timer_surface = game_font.render(timer_text, True, (255, 255, 255))
+        timer_x = screen.get_width() // 2
+        timer_y = 25  # Position it at the top center
+
+        timer_rect = timer_surface.get_rect(center=(timer_x, timer_y))
+        screen.blit(timer_surface, timer_rect)
 
     def check_collision(self):
         if self.fruit.pos == self.snake.body[0]:
@@ -215,6 +240,9 @@ class Main:
     def game_over(self):
         self.snake.reset()
         self.score = 0  # Reset score after game over
+        self.start_time = time.time()  # Reset the start time when the game is over
+        self.elapsed_time = 0  # Reset the elapsed time
+
 
     def draw_score(self):
         # Set the height of the score area
