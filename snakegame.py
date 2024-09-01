@@ -11,16 +11,19 @@ class Snake:
         self.load_graphics()
 
     def load_graphics(self):
+        #Snake head
         self.head_up = pygame.image.load('assets/head_up.png').convert_alpha()
         self.head_down = pygame.image.load('assets/head_down.png').convert_alpha()
         self.head_right = pygame.image.load('assets/head_right.png').convert_alpha()
         self.head_left = pygame.image.load('assets/head_left.png').convert_alpha()
 
+        #Snake tail
         self.tail_up = pygame.image.load('assets/tail_up.png').convert_alpha()
         self.tail_down = pygame.image.load('assets/tail_down.png').convert_alpha()
         self.tail_right = pygame.image.load('assets/tail_right.png').convert_alpha()
         self.tail_left = pygame.image.load('assets/tail_left.png').convert_alpha()
 
+        #Snake body segments
         self.body_vertical = pygame.image.load('assets/body_vertical.png').convert_alpha()
         self.body_horizontal = pygame.image.load('assets/body_horizontal.png').convert_alpha()
         self.body_tr = pygame.image.load('assets/body_topright.png').convert_alpha()
@@ -116,7 +119,7 @@ class Fruit:
 
     def randomize(self):
         self.x = random.randint(0, cell_number - 1)
-        self.y = random.randint(0, cell_number - 1)
+        self.y = random.randint(1, cell_number - 1)
         self.pos = Vector2(self.x, self.y)
 
 
@@ -132,7 +135,7 @@ class PowerFruit:
 
     def randomize(self):
         self.x = random.randint(0, cell_number - 1)
-        self.y = random.randint(0, cell_number - 1)
+        self.y = random.randint(1, cell_number - 1)
         self.pos = Vector2(self.x, self.y)
 
     def activate(self):
@@ -153,7 +156,7 @@ class Main:
         self.paused = False
 
         # Load the background image and scale it to fit the screen
-        self.background_image = pygame.image.load('assets/background2.png')
+        self.background_image = pygame.image.load('assets/background4.png')
         self.background_image = pygame.transform.scale(self.background_image, (cell_number * cell_size, cell_number * cell_size))
 
     def update(self):
@@ -163,7 +166,7 @@ class Main:
             self.check_fail()
 
     def draw_elements(self):
-        screen.blit(self.background_image, (0, 0))
+        screen.blit(self.background_image, (0, 50))
         self.fruit.draw_fruit()
         self.power_fruit.draw_fruit()
         self.snake.draw_snake()
@@ -201,7 +204,7 @@ class Main:
 
     def check_fail(self):
         # Check if the snake hits the wall
-        if not 0 <= self.snake.body[0].x < cell_number or not 0 <= self.snake.body[0].y < cell_number:
+        if not 0 <= self.snake.body[0].x < cell_number or not 1 <= self.snake.body[0].y < cell_number:
             self.game_over()
 
         # Check if the snake hits itself
@@ -214,18 +217,26 @@ class Main:
         self.score = 0  # Reset score after game over
 
     def draw_score(self):
+        # Set the height of the score area
+        score_area_height = 50
+
+        # Draw the black background for the score
+        score_background_rect = pygame.Rect(0, 0, screen.get_width(), score_area_height)
+        pygame.draw.rect(screen, (0, 0, 0), score_background_rect)
+
+        # Render the score and high score texts
         score_text = f"Score: {self.score}"
         high_score_text = f"High Score: {self.high_score}"
 
-        score_surface = game_font.render(score_text, True, (56, 74, 12))
-        high_score_surface = game_font.render(high_score_text, True, (56, 74, 12))
+        score_surface = game_font.render(score_text, True, (255, 255, 255))
+        high_score_surface = game_font.render(high_score_text, True, (255, 255, 255))
 
-        # Calculate positions to center the text at the bottom of the screen
-        score_x = screen.get_width() // 2
-        score_y = screen.get_height() - 45  # Positioning score above the high score
+        # Calculate positions to center the text at the top of the screen
+        score_x = screen.get_width() // 4
+        score_y = score_area_height // 2
 
-        high_score_x = screen.get_width() // 2
-        high_score_y = screen.get_height() - 20  # Positioning high score at the bottom
+        high_score_x = 3 * screen.get_width() // 4
+        high_score_y = score_area_height // 2
 
         score_rect = score_surface.get_rect(center=(score_x, score_y))
         high_score_rect = high_score_surface.get_rect(center=(high_score_x, high_score_y))
