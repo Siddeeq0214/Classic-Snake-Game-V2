@@ -1,5 +1,7 @@
 import pygame, sys, random
 from pygame.math import Vector2
+import time
+import math
 
 class Snake:
     def __init__(self):
@@ -110,7 +112,8 @@ class Snake:
 
 
 class Fruit:
-    def __init__(self):
+    def __init__(self, snake):
+        self.snake = snake
         self.randomize()
 
     def draw_fruit(self):
@@ -118,13 +121,18 @@ class Fruit:
         screen.blit(apple, fruit_rect)
 
     def randomize(self):
-        self.x = random.randint(0, cell_number - 1)
-        self.y = random.randint(1, cell_number - 1)
-        self.pos = Vector2(self.x, self.y)
+        while True:
+            self.x = random.randint(0, cell_number - 1)
+            self.y = random.randint(1, cell_number - 1)
+            self.pos = Vector2(self.x, self.y)
 
+            # Check if the new position overlaps with the snake's body
+            if self.pos not in self.snake.body:
+                break
 
 class PowerFruit:
-    def __init__(self):
+    def __init__(self, snake):
+        self.snake = snake
         self.randomize()
         self.active = False
 
@@ -134,9 +142,14 @@ class PowerFruit:
             screen.blit(power_apple, fruit_rect)
 
     def randomize(self):
-        self.x = random.randint(0, cell_number - 1)
-        self.y = random.randint(1, cell_number - 1)
-        self.pos = Vector2(self.x, self.y)
+        while True:
+            self.x = random.randint(0, cell_number - 1)
+            self.y = random.randint(1, cell_number - 1)
+            self.pos = Vector2(self.x, self.y)
+
+            # Check if the new position overlaps with the snake's body
+            if self.pos not in self.snake.body:
+                break
 
     def activate(self):
         self.active = True
@@ -145,15 +158,53 @@ class PowerFruit:
     def deactivate(self):
         self.active = False
 
+class SpikeBall:
+    def __init__(self, snake):
+        self.snake = snake
+        self.spikes = [] #List to hold active spikes
+        self.spike_image = pygame.image.load('assets/spike.png').convert_alpha()  # Load the spike image
+        self.min_distance = 3 
+
+    def draw_spikes(self):
+        for spike in self.spikes:
+            spike_rect = pygame.Rect(int(spike['pos'].x * cell_size), int(spike['pos'].y * cell_size), cell_size, cell_size)
+            screen.blit(self.spike_image, spike_rect)
+
+    def randomize(self):
+        while True:
+            spike_data = {
+                'pos': Vector2(random.randint(0, cell_number - 1), random.randint(1, cell_number - 1)),
+                'spawn_time': time.time()
+            }
+
+            # Check if the new position overlaps with the snake's body
+            if (self.pos_valid(spike_data['pos']) and
+                all(self.distance_between(spike_data['pos'], spike['pos']) >= self.min_distance for spike in self.spikes)):
+                self.spikes.append(spike_data)
+                break
+
+    def pos_valid(self, pos):
+        return pos not in self.snake.body
+    
+    def distance_between(self, pos1, pos2):
+        return math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2)
+
+    def update(self):
+        current_time = time.time()
+        self.spikes = [spike for spike in self.spikes if current_time - spike['spawn_time'] <= 10]
 
 class Main:
     def __init__(self):
         self.snake = Snake()
-        self.fruit = Fruit()
-        self.power_fruit = PowerFruit()
+        self.fruit = Fruit(self.snake)
+        self.power_fruit = PowerFruit(self.snake)
+        self.spike_ball = SpikeBall(self.snake)  # Add spike ball
         self.score = 0
         self.high_score = 0
         self.paused = False
+        self.start_time = time.time()  # Track when the game starts
+        self.elapsed_time = 0  # Initialize elapsed time
+
 
         # Load the background image and scale it to fit the screen
         self.background_image = pygame.image.load('assets/background4.png')
@@ -164,15 +215,44 @@ class Main:
             self.snake.move_snake()
             self.check_collision()
             self.check_fail()
+            self.update_timer()
+            self.spike_ball.update()  # Update spike ball
+
+            # Start spawning spike balls after 10 seconds
+            if self.elapsed_time > 10:
+                # Randomly spawn a spike ball with a 3% chance every update cycle
+                if random.random() < 0.03:
+                    self.spike_ball.randomize()
+
+    def update_timer(self):
+        # Update the elapsed time if the game is not paused
+        self.elapsed_time = time.time() - self.start_time
+
 
     def draw_elements(self):
         screen.blit(self.background_image, (0, 50))
         self.fruit.draw_fruit()
         self.power_fruit.draw_fruit()
+        self.spike_ball.draw_spikes()  # Draw spike ball
         self.snake.draw_snake()
         self.draw_score()
+        self.draw_timer()
         if self.paused:
             self.draw_pause_screen() #Draw pause screen
+
+    def draw_timer(self):
+        # Convert elapsed time to minutes and seconds
+        minutes = int(self.elapsed_time // 60)
+        seconds = int(self.elapsed_time % 60)
+        timer_text = f"{minutes:02}:{seconds:02}"
+
+        # Render the timer text
+        timer_surface = game_font.render(timer_text, True, (255, 255, 255))
+        timer_x = screen.get_width() // 2
+        timer_y = 25  # Position it at the top center
+
+        timer_rect = timer_surface.get_rect(center=(timer_x, timer_y))
+        screen.blit(timer_surface, timer_rect)
 
     def check_collision(self):
         if self.fruit.pos == self.snake.body[0]:
@@ -197,6 +277,11 @@ class Main:
             if self.score > self.high_score:
                 self.high_score = self.score
 
+        # Check for collision with any spike ball
+        for spike in self.spike_ball.spikes:
+            if spike['pos'] == self.snake.body[0]:
+                self.game_over()  # End the game if the snake hits a spike ball
+
         # Avoid fruit spawning inside the snake's body
         for block in self.snake.body[1:]:
             if block == self.fruit.pos:
@@ -215,6 +300,9 @@ class Main:
     def game_over(self):
         self.snake.reset()
         self.score = 0  # Reset score after game over
+        self.start_time = time.time()  # Reset the start time when the game is over
+        self.elapsed_time = 0  # Reset the elapsed time
+        self.spike_ball.spikes = []  # Clear spike balls after game over
 
     def draw_score(self):
         # Set the height of the score area
@@ -275,7 +363,7 @@ cell_number = 20
 screen = pygame.display.set_mode((cell_number * cell_size, cell_number * cell_size))
 clock = pygame.time.Clock()
 apple = pygame.image.load('assets/apple.png').convert_alpha()
-power_apple = pygame.image.load('assets/power_apple.png').convert_alpha()
+power_apple = pygame.image.load('assets/power_apple2.png').convert_alpha()
 game_font = pygame.font.Font('Font/PoetsenOne-Regular.ttf', 25)
 
 SCREEN_UPDATE = pygame.USEREVENT
