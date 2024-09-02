@@ -146,12 +146,38 @@ class PowerFruit:
     def deactivate(self):
         self.active = False
 
+class SpikeBall:
+    def __init__(self):
+        self.pos = None
+        self.spawn_time = None
+        self.active = False
+        self.spike_image = pygame.image.load('assets/spike.png').convert_alpha()  # Load the spike image
+
+
+    def draw_spike(self):
+        if self.active:
+            spike_rect = pygame.Rect(int(self.pos.x * cell_size), int(self.pos.y * cell_size), cell_size, cell_size)
+            screen.blit(self.spike_image, spike_rect)
+
+    def randomize(self):
+        self.x = random.randint(0, cell_number - 1)
+        self.y = random.randint(1, cell_number - 1)
+        self.pos = Vector2(self.x, self.y)
+        self.spawn_time = time.time()
+        self.active = True
+
+    def update(self):
+        if self.active:
+            current_time = time.time()
+            if current_time - self.spawn_time > 10:  # Spike lasts for 10 seconds
+                self.active = False
 
 class Main:
     def __init__(self):
         self.snake = Snake()
         self.fruit = Fruit()
         self.power_fruit = PowerFruit()
+        self.spike_ball = SpikeBall()  # Add spike ball
         self.score = 0
         self.high_score = 0
         self.paused = False
@@ -169,6 +195,11 @@ class Main:
             self.check_collision()
             self.check_fail()
             self.update_timer()
+            self.spike_ball.update()  # Update spike ball
+
+            # Randomly spawn a spike ball with a 5% chance every update cycle
+            if not self.spike_ball.active and random.random() < 0.05:
+                self.spike_ball.randomize()
 
     def update_timer(self):
         # Update the elapsed time if the game is not paused
@@ -179,6 +210,7 @@ class Main:
         screen.blit(self.background_image, (0, 50))
         self.fruit.draw_fruit()
         self.power_fruit.draw_fruit()
+        self.spike_ball.draw_spike()  # Draw spike ball
         self.snake.draw_snake()
         self.draw_score()
         self.draw_timer()
@@ -221,6 +253,11 @@ class Main:
             # Update the high score
             if self.score > self.high_score:
                 self.high_score = self.score
+
+        # Check for collision with the spike ball
+        if self.spike_ball.active and self.spike_ball.pos == self.snake.body[0]:
+            self.game_over()  # End the game if the snake hits the spike ball
+
 
         # Avoid fruit spawning inside the snake's body
         for block in self.snake.body[1:]:
