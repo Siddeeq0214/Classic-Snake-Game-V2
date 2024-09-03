@@ -2,6 +2,7 @@ import pygame, sys, random
 from pygame.math import Vector2
 import time
 import math
+from menuscreen import menu_screen
 
 class Snake:
     def __init__(self):
@@ -114,6 +115,7 @@ class Snake:
 class Fruit:
     def __init__(self, snake):
         self.snake = snake
+        self.border_offset = 1 #Minimum distance from the border
         self.randomize()
 
     def draw_fruit(self):
@@ -122,8 +124,8 @@ class Fruit:
 
     def randomize(self):
         while True:
-            self.x = random.randint(0, cell_number - 1)
-            self.y = random.randint(1, cell_number - 1)
+            self.x = random.randint(self.border_offset, cell_number - 1 - self.border_offset)
+            self.y = random.randint(1 + self.border_offset, cell_number - 1 - self.border_offset)
             self.pos = Vector2(self.x, self.y)
 
             # Check if the new position overlaps with the snake's body
@@ -133,6 +135,7 @@ class Fruit:
 class PowerFruit:
     def __init__(self, snake):
         self.snake = snake
+        self.border_offset = 1 #Minimum distance from the border
         self.randomize()
         self.active = False
 
@@ -143,8 +146,8 @@ class PowerFruit:
 
     def randomize(self):
         while True:
-            self.x = random.randint(0, cell_number - 1)
-            self.y = random.randint(1, cell_number - 1)
+            self.x = random.randint(self.border_offset, cell_number - 1 - self.border_offset)
+            self.y = random.randint(1 + self.border_offset, cell_number - 1 - self.border_offset)
             self.pos = Vector2(self.x, self.y)
 
             # Check if the new position overlaps with the snake's body
@@ -163,7 +166,8 @@ class SpikeBall:
         self.snake = snake
         self.spikes = [] #List to hold active spikes
         self.spike_image = pygame.image.load('assets/spike.png').convert_alpha()  # Load the spike image
-        self.min_distance = 3 
+        self.min_distance = 3
+        self.border_margin = 1 #Minimum distance from the border 
 
     def draw_spikes(self):
         for spike in self.spikes:
@@ -173,7 +177,8 @@ class SpikeBall:
     def randomize(self):
         while True:
             spike_data = {
-                'pos': Vector2(random.randint(0, cell_number - 1), random.randint(1, cell_number - 1)),
+                'pos': Vector2(random.randint(0 + self.border_margin, cell_number - 1 - self.border_margin), 
+                               random.randint(1 + self.border_margin, cell_number - 1 - self.border_margin)),
                 'spawn_time': time.time()
             }
 
@@ -205,10 +210,55 @@ class Main:
         self.start_time = time.time()  # Track when the game starts
         self.elapsed_time = 0  # Initialize elapsed time
 
+        # Define buttons for the pause screen
+        self.resume_button_rect = pygame.Rect((screen.get_width() - 250) // 2, 300, 250, 100)
+        self.back_button_rect = pygame.Rect((screen.get_width() - 250) // 2, 450, 250, 100)
 
         # Load the background image and scale it to fit the screen
         self.background_image = pygame.image.load('assets/background4.png')
         self.background_image = pygame.transform.scale(self.background_image, (cell_number * cell_size, cell_number * cell_size))
+
+    def draw_pause_screen(self):
+        # Draw a semi-transparent background overlay
+        overlay = pygame.Surface((screen.get_width(), screen.get_height()))
+        overlay.set_alpha(180)  # Set transparency level (0 is fully transparent, 255 is fully opaque)
+        overlay.fill((0, 0, 0))  # Black overlay
+        screen.blit(overlay, (0, 0))
+
+        # Draw the pause menu box
+        box_width, box_height = 400, 400
+        box_x = (screen.get_width() - box_width) // 2
+        box_y = (screen.get_height() - box_height) // 2
+        box_rect = pygame.Rect(box_x, box_y, box_width, box_height)
+
+        # Draw a semi-transparent box for the menu
+        pygame.draw.rect(screen, (50, 50, 50, 200), box_rect, border_radius=10)  # Dark gray box with rounded corners
+        pygame.draw.rect(screen, (255, 255, 255), box_rect, 2, border_radius=10)  # White border with rounded corners
+
+        # Draw the "Resume" button with modern styling
+        pygame.draw.rect(screen, (100, 100, 100), self.resume_button_rect, border_radius=10)  # Grey rounded button
+        pygame.draw.rect(screen, (255, 255, 255), self.resume_button_rect, 2, border_radius=10)  # White border
+
+        self.draw_text("Resume", game_font, white, screen, self.resume_button_rect.centerx, self.resume_button_rect.centery)
+
+        # Draw the "Back to Menu" button with modern styling
+        pygame.draw.rect(screen, (100, 100, 100), self.back_button_rect, border_radius=10)  # Grey rounded button
+        pygame.draw.rect(screen, (255, 255, 255), self.back_button_rect, 2, border_radius=10)  # White border
+
+        self.draw_text("Back to Menu", game_font, white, screen, self.back_button_rect.centerx, self.back_button_rect.centery)
+    
+    def draw_text(self, text, font, color, surface, x, y):
+        textobj = font.render(text, True, color)
+        textrect = textobj.get_rect(center=(x, y))
+        surface.blit(textobj, textrect)
+
+    def check_pause_screen_events(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.resume_button_rect.collidepoint(event.pos):
+                self.paused = False  # Resume the game
+            if self.back_button_rect.collidepoint(event.pos):
+                menu_screen()  # Go back to the main menu
+                self.__init__()  # Reinitialize the game state
 
     def update(self):
         if not self.paused:
@@ -332,32 +382,14 @@ class Main:
         screen.blit(score_surface, score_rect)
         screen.blit(high_score_surface, high_score_rect)
 
-    def draw_pause_screen(self):
-        # Draw a semi-transparent background box
-        box_width, box_height = 300, 150
-        box_x = (screen.get_width() - box_width) // 2
-        box_y = (screen.get_height() - box_height) // 2
-        box_rect = pygame.Rect(box_x, box_y, box_width, box_height)
-
-        pygame.draw.rect(screen, (0, 0, 0, 180), box_rect)  # Semi-transparent black
-        pygame.draw.rect(screen, (255, 255, 255), box_rect, 2)  # White border
-
-        # Draw the text
-        pause_text = "Paused"
-        resume_text = "Press 'R' to Resume"
-        
-        pause_surface = game_font.render(pause_text, True, (255, 255, 255))  # White text
-        resume_surface = game_font.render(resume_text, True, (255, 255, 255))  # White text
-
-        pause_rect = pause_surface.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2 - 20))
-        resume_rect = resume_surface.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2 + 20))
-
-        screen.blit(pause_surface, pause_rect)
-        screen.blit(resume_surface, resume_rect)
-
-
+    
 pygame.mixer.pre_init(44100, -16, 2, 512)
 pygame.init()
+
+# Define colors
+white = (255, 255, 255)
+grey = (169, 169, 169)
+
 cell_size = 40
 cell_number = 20
 screen = pygame.display.set_mode((cell_number * cell_size, cell_number * cell_size))
@@ -376,42 +408,46 @@ while True:
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
-        if event.type == SCREEN_UPDATE:
-            main_game.update()
-        if event.type == pygame.KEYDOWN:
 
-            if event.key == pygame.K_ESCAPE:
-                main_game.paused = not main_game.paused  # Toggle pause state
+        if main_game.paused:
+            main_game.check_pause_screen_events(event)
+        else:
+            if event.type == SCREEN_UPDATE:
+                main_game.update()
 
-            if event.key == pygame.K_r and main_game.paused:
-                main_game.paused = False  # Resume the game
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    main_game.paused = not main_game.paused  # Toggle pause state
 
-            if event.key == pygame.K_UP:
-                if main_game.snake.direction.y != 1:
-                    main_game.snake.direction = Vector2(0, -1)
-            if event.key == pygame.K_DOWN:
-                if main_game.snake.direction.y != -1:
-                    main_game.snake.direction = Vector2(0, 1)
-            if event.key == pygame.K_LEFT:
-                if main_game.snake.direction.x != 1:
-                    main_game.snake.direction = Vector2(-1, 0)
-            if event.key == pygame.K_RIGHT:
-                if main_game.snake.direction.x != -1:
-                    main_game.snake.direction = Vector2(1, 0)
+                if not main_game.paused:  # Only handle movement when not paused
+                    if event.key == pygame.K_UP:
+                        if main_game.snake.direction.y != 1:
+                            main_game.snake.direction = Vector2(0, -1)
+                    if event.key == pygame.K_DOWN:
+                        if main_game.snake.direction.y != -1:
+                            main_game.snake.direction = Vector2(0, 1)
+                    if event.key == pygame.K_LEFT:
+                        if main_game.snake.direction.x != 1:
+                            main_game.snake.direction = Vector2(-1, 0)
+                    if event.key == pygame.K_RIGHT:
+                        if main_game.snake.direction.x != -1:
+                            main_game.snake.direction = Vector2(1, 0)
         
-            if event.key == pygame.K_w:
-                if main_game.snake.direction.y != 1:
-                    main_game.snake.direction = Vector2(0, -1)
-            if event.key == pygame.K_s:
-                if main_game.snake.direction.y != -1:
-                    main_game.snake.direction = Vector2(0, 1)
-            if event.key == pygame.K_a:
-                if main_game.snake.direction.x != 1:
-                    main_game.snake.direction = Vector2(-1, 0)
-            if event.key == pygame.K_d:
-                if main_game.snake.direction.x != -1:
-                    main_game.snake.direction = Vector2(1, 0)
+                    if event.key == pygame.K_w:
+                        if main_game.snake.direction.y != 1:
+                            main_game.snake.direction = Vector2(0, -1)
+                    if event.key == pygame.K_s:
+                        if main_game.snake.direction.y != -1:
+                            main_game.snake.direction = Vector2(0, 1)
+                    if event.key == pygame.K_a:
+                        if main_game.snake.direction.x != 1:
+                            main_game.snake.direction = Vector2(-1, 0)
+                    if event.key == pygame.K_d:
+                        if main_game.snake.direction.x != -1:
+                            main_game.snake.direction = Vector2(1, 0)
 
     main_game.draw_elements()
+    if main_game.paused:
+        main_game.draw_pause_screen()
     pygame.display.update()
     clock.tick(60)
