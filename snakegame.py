@@ -111,7 +111,6 @@ class Snake:
         self.body = [Vector2(5, 10), Vector2(4, 10), Vector2(3, 10)]
         self.direction = Vector2(0, 0)
 
-
 class Fruit:
     def __init__(self, snake):
         self.snake = snake
@@ -248,6 +247,17 @@ class Main:
         self.start_time = time.time()  # Track when the game starts
         self.elapsed_time = 0  # Initialize elapsed time
 
+        # Load sounds
+        self.fruit_sound = pygame.mixer.Sound('sound/Sound_crunch.wav')
+        self.power_fruit_sound = pygame.mixer.Sound('sound/Sound_crunch.wav')
+        self.rotten_fruit_sound = pygame.mixer.Sound('sound/Sound_crunch.wav')
+
+        self.fruit_sound.set_volume(0.5)  # Set volume to 50%
+        self.power_fruit_sound.set_volume(0.5)  # Set volume to 50%
+        self.rotten_fruit_sound.set_volume(0.5)  # Set volume to 50%
+
+
+
         # Health system
         self.max_health = 3
         self.current_health = self.max_health
@@ -375,6 +385,9 @@ class Main:
             if self.score > self.high_score:
                 self.high_score = self.score
 
+            #Play fruit sound
+            self.fruit_sound.play()
+
             # Check if power fruit should be activated
             if self.score % 100 == 0:
                 self.power_fruit.activate()
@@ -384,6 +397,9 @@ class Main:
             self.power_fruit.deactivate()
             self.score += 20  # Increase score by 20 for collecting power fruit
 
+            #Play fruit sound
+            self.power_fruit_sound.play()
+            
             # Update the high score
             if self.score > self.high_score:
                 self.high_score = self.score
@@ -398,6 +414,10 @@ class Main:
                 self.current_health -= 1
                 #self.score -= 10  # Decrease score by 10 for hitting rotten fruit
                 self.rotten_fruit.rotten_fruits.remove(fruit)  # Remove rotten fruit after collision
+                
+                #Play fruit sound
+                self.rotten_fruit_sound.play()
+                
                 if self.current_health == 0:
                     self.game_over()  # End game if no health is left
 
@@ -405,9 +425,9 @@ class Main:
                     #self.score = 0  # Ensure the score doesn't go negative
         
         # Avoid fruit spawning inside the snake's body
-        for block in self.snake.body[1:]:
-            if block == self.fruit.pos:
-                self.fruit.randomize()
+        #for block in self.snake.body[1:]:
+            #if block == self.fruit.pos:
+                #self.fruit.randomize()
 
     def check_fail(self):
         # Check if the snake hits the wall
