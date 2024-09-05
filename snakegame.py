@@ -256,8 +256,6 @@ class Main:
         self.power_fruit_sound.set_volume(0.5)  # Set volume to 50%
         self.rotten_fruit_sound.set_volume(0.5)  # Set volume to 50%
 
-
-
         # Health system
         self.max_health = 3
         self.current_health = self.max_health
@@ -412,7 +410,6 @@ class Main:
         for fruit in self.rotten_fruit.rotten_fruits:
             if fruit['pos'] == self.snake.body[0]:
                 self.current_health -= 1
-                #self.score -= 10  # Decrease score by 10 for hitting rotten fruit
                 self.rotten_fruit.rotten_fruits.remove(fruit)  # Remove rotten fruit after collision
                 
                 #Play fruit sound
@@ -420,9 +417,6 @@ class Main:
                 
                 if self.current_health == 0:
                     self.game_over()  # End game if no health is left
-
-                #if self.score < 0:
-                    #self.score = 0  # Ensure the score doesn't go negative
         
         # Avoid fruit spawning inside the snake's body
         #for block in self.snake.body[1:]:
