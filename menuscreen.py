@@ -12,6 +12,7 @@ screen = pygame.display.set_mode((screen_width, screen_height))
 
 # Set font
 font = pygame.font.Font('Font/PoetsenOne-Regular.ttf', 50)
+small_font = pygame.font.Font('Font/PoetsenOne-Regular.ttf', 20)
 
 # Define colors
 white = (255, 255, 255)
@@ -22,6 +23,7 @@ dark_grey = (105, 105, 105)
 button_color = (76, 177, 105)
 button_hover_color = (70, 177, 105)
 transparent_black = (0, 0, 0, 180)
+faded_grey = (169, 169, 169, 100)
 
 # Define button positions and sizes
 button_width = 250
@@ -62,6 +64,9 @@ def menu_screen():
         # Draw Quit Button with hover effect
         draw_button(quit_button_rect, button_color, 'Quit Game', hover_color=button_hover_color)
 
+        # Draw faded 'developed by Siddeeq' text at the bottom
+        draw_text('developed by Siddeeq', small_font, faded_grey, screen, screen_width // 2, screen_height - 30)
+     
         pygame.display.update()
         
         for event in pygame.event.get():

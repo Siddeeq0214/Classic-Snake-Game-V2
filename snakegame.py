@@ -111,7 +111,6 @@ class Snake:
         self.body = [Vector2(5, 10), Vector2(4, 10), Vector2(3, 10)]
         self.direction = Vector2(0, 0)
 
-
 class Fruit:
     def __init__(self, snake):
         self.snake = snake
@@ -198,18 +197,71 @@ class SpikeBall:
         current_time = time.time()
         self.spikes = [spike for spike in self.spikes if current_time - spike['spawn_time'] <= 10]
 
+class RottenFruit:
+    def __init__(self, snake):
+        self.snake = snake
+        self.rotten_fruits = []  # List to hold active rotten fruits
+        self.rotten_image = pygame.image.load('assets/rotten_apple.png').convert_alpha()  # Load the rotten fruit image
+        self.min_distance = 3
+        self.border_margin = 1  # Minimum distance from the border 
+
+    def draw_rotten_fruits(self):
+        for fruit in self.rotten_fruits:
+            fruit_rect = pygame.Rect(int(fruit['pos'].x * cell_size), int(fruit['pos'].y * cell_size), cell_size, cell_size)
+            screen.blit(self.rotten_image, fruit_rect)
+
+    def randomize(self):
+        while True:
+            fruit_data = {
+                'pos': Vector2(random.randint(0 + self.border_margin, cell_number - 1 - self.border_margin), 
+                               random.randint(1 + self.border_margin, cell_number - 1 - self.border_margin)),
+                'spawn_time': time.time()
+            }
+
+            # Check if the new position overlaps with the snake's body
+            if (self.pos_valid(fruit_data['pos']) and
+                all(self.distance_between(fruit_data['pos'], fruit['pos']) >= self.min_distance for fruit in self.rotten_fruits)):
+                self.rotten_fruits.append(fruit_data)
+                break
+
+    def pos_valid(self, pos):
+        return pos not in self.snake.body
+    
+    def distance_between(self, pos1, pos2):
+        return math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2)
+
+    def update(self):
+        current_time = time.time()
+        self.rotten_fruits = [fruit for fruit in self.rotten_fruits if current_time - fruit['spawn_time'] <= 15]  # Remove after 5 seconds
+
 class Main:
     def __init__(self):
         self.snake = Snake()
         self.fruit = Fruit(self.snake)
         self.power_fruit = PowerFruit(self.snake)
         self.spike_ball = SpikeBall(self.snake)  # Add spike ball
+        self.rotten_fruit = RottenFruit(self.snake)
         self.score = 0
         self.high_score = 0
         self.paused = False
         self.start_time = time.time()  # Track when the game starts
         self.elapsed_time = 0  # Initialize elapsed time
 
+        # Load sounds
+        self.fruit_sound = pygame.mixer.Sound('sound/Sound_crunch.wav')
+        self.power_fruit_sound = pygame.mixer.Sound('sound/Sound_crunch.wav')
+        self.rotten_fruit_sound = pygame.mixer.Sound('sound/Sound_crunch.wav')
+
+        self.fruit_sound.set_volume(0.5)  # Set volume to 50%
+        self.power_fruit_sound.set_volume(0.5)  # Set volume to 50%
+        self.rotten_fruit_sound.set_volume(0.5)  # Set volume to 50%
+
+        # Health system
+        self.max_health = 3
+        self.current_health = self.max_health
+        self.heart_image = pygame.image.load('assets/heart.png').convert_alpha()
+        self.empty_heart_image = pygame.image.load('assets/empty_heart.png').convert_alpha()
+        
         # Define buttons for the pause screen
         self.resume_button_rect = pygame.Rect((screen.get_width() - 250) // 2, 300, 250, 100)
         self.back_button_rect = pygame.Rect((screen.get_width() - 250) // 2, 450, 250, 100)
@@ -267,12 +319,18 @@ class Main:
             self.check_fail()
             self.update_timer()
             self.spike_ball.update()  # Update spike ball
+            self.rotten_fruit.update()
 
             # Start spawning spike balls after 10 seconds
             if self.elapsed_time > 10:
                 # Randomly spawn a spike ball with a 3% chance every update cycle
                 if random.random() < 0.03:
                     self.spike_ball.randomize()
+
+            # Start spawning rotten fruits after 15 seconds
+            if self.elapsed_time > 5:
+                if random.random() < 0.02:  # 2% chance to spawn rotten fruit
+                    self.rotten_fruit.randomize()
 
     def update_timer(self):
         # Update the elapsed time if the game is not paused
@@ -284,9 +342,11 @@ class Main:
         self.fruit.draw_fruit()
         self.power_fruit.draw_fruit()
         self.spike_ball.draw_spikes()  # Draw spike ball
+        self.rotten_fruit.draw_rotten_fruits()
         self.snake.draw_snake()
         self.draw_score()
         self.draw_timer()
+        self.draw_health()
         if self.paused:
             self.draw_pause_screen() #Draw pause screen
 
@@ -304,6 +364,15 @@ class Main:
         timer_rect = timer_surface.get_rect(center=(timer_x, timer_y))
         screen.blit(timer_surface, timer_rect)
 
+    def draw_health(self):
+        for i in range(self.max_health):
+            heart_x = 4 + i * 25
+            heart_y = 4
+            if i < self.current_health:
+                screen.blit(self.heart_image, (heart_x, heart_y))
+            else:
+                screen.blit(self.empty_heart_image, (heart_x, heart_y))
+    
     def check_collision(self):
         if self.fruit.pos == self.snake.body[0]:
             self.fruit.randomize()
@@ -314,6 +383,9 @@ class Main:
             if self.score > self.high_score:
                 self.high_score = self.score
 
+            #Play fruit sound
+            self.fruit_sound.play()
+
             # Check if power fruit should be activated
             if self.score % 100 == 0:
                 self.power_fruit.activate()
@@ -323,6 +395,9 @@ class Main:
             self.power_fruit.deactivate()
             self.score += 20  # Increase score by 20 for collecting power fruit
 
+            #Play fruit sound
+            self.power_fruit_sound.play()
+            
             # Update the high score
             if self.score > self.high_score:
                 self.high_score = self.score
@@ -332,10 +407,21 @@ class Main:
             if spike['pos'] == self.snake.body[0]:
                 self.game_over()  # End the game if the snake hits a spike ball
 
+        for fruit in self.rotten_fruit.rotten_fruits:
+            if fruit['pos'] == self.snake.body[0]:
+                self.current_health -= 1
+                self.rotten_fruit.rotten_fruits.remove(fruit)  # Remove rotten fruit after collision
+                
+                #Play fruit sound
+                self.rotten_fruit_sound.play()
+                
+                if self.current_health == 0:
+                    self.game_over()  # End game if no health is left
+        
         # Avoid fruit spawning inside the snake's body
-        for block in self.snake.body[1:]:
-            if block == self.fruit.pos:
-                self.fruit.randomize()
+        #for block in self.snake.body[1:]:
+            #if block == self.fruit.pos:
+                #self.fruit.randomize()
 
     def check_fail(self):
         # Check if the snake hits the wall
@@ -353,7 +439,8 @@ class Main:
         self.start_time = time.time()  # Reset the start time when the game is over
         self.elapsed_time = 0  # Reset the elapsed time
         self.spike_ball.spikes = []  # Clear spike balls after game over
-
+        self.current_health = self.max_health  # Reset health after game over
+    
     def draw_score(self):
         # Set the height of the score area
         score_area_height = 50
